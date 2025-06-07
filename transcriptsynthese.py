@@ -3,7 +3,6 @@
 
 """
 Transcripteur Audio/Vidéo avec Synthèse GPT
-Interface graphique moderne pour la transcription et synthèse de contenus audio/vidéo
 """
 
 import whisper
