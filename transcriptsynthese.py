@@ -117,7 +117,7 @@ class TranscripteurModerne:
         mode_frame.pack(fill="x", pady=(0, 15))
 
         # Radio buttons for operation mode
-        rb_transcribe = tk.Radiobutton(
+        self.rb_transcribe = tk.Radiobutton(
             mode_frame,
             text="Transcrire et synthétiser (Audio/Vidéo)",
             variable=self.operation_mode,
@@ -127,9 +127,9 @@ class TranscripteurModerne:
             fg='#2c3e50',
             font=("Arial", 9)
         )
-        rb_transcribe.pack(anchor="w", pady=(0, 5))
+        self.rb_transcribe.pack(anchor="w", pady=(0, 5))
 
-        rb_synthesize = tk.Radiobutton(
+        self.rb_synthesize = tk.Radiobutton(
             mode_frame,
             text="Synthétiser une transcription existante (.txt)",
             variable=self.operation_mode,
@@ -139,7 +139,7 @@ class TranscripteurModerne:
             fg='#2c3e50',
             font=("Arial", 9)
         )
-        rb_synthesize.pack(anchor="w")
+        self.rb_synthesize.pack(anchor="w")
 
     def on_operation_mode_change(self):
         """Met à jour l'interface en fonction du mode d'opération choisi"""
@@ -489,15 +489,12 @@ class TranscripteurModerne:
         self.btn_stop.config(state="normal")
 
         # Désactiver les radio buttons pendant le traitement
-        # Access the radio buttons by iterating through the children of the mode_frame
-        # This access is slightly brittle, a more robust way is to store references to them.
         try:
-            for widget in self.root.winfo_children()[0].winfo_children()[2].winfo_children():
-                if isinstance(widget, tk.Radiobutton):
-                    widget.config(state="disabled")
-        except IndexError:
-            # Fallback if structure changes, log an error or handle gracefully
-            self.log("Avertissement: Impossible de désactiver les boutons radio. La structure de l'interface a peut-être changé.")
+            self.rb_transcribe.config(state="disabled")
+            self.rb_synthesize.config(state="disabled")
+        except Exception:
+            # Fallback if for some reason the references are missing
+            self.log("Avertissement: Impossible de désactiver les boutons radio.")
 
 
         # Réinitialiser la progression
@@ -527,11 +524,10 @@ class TranscripteurModerne:
 
         # Réactiver les radio buttons
         try:
-            for widget in self.root.winfo_children()[0].winfo_children()[2].winfo_children():
-                if isinstance(widget, tk.Radiobutton):
-                    widget.config(state="normal")
-        except IndexError:
-            self.log("Avertissement: Impossible de réactiver les boutons radio. La structure de l'interface a peut-être changé.")
+            self.rb_transcribe.config(state="normal")
+            self.rb_synthesize.config(state="normal")
+        except Exception:
+            self.log("Avertissement: Impossible de réactiver les boutons radio.")
 
     def traitement_principal(self):
         """Traitement principal de transcription et synthèse"""
