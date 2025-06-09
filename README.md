@@ -38,7 +38,7 @@ Ce projet vise à offrir un outil simple, personnalisable et local-friendly pour
 
 3. **Installer les dépendances**
    ```bash
-pip install -r exigence.txt
+   pip install -r exigence.txt
 
 4. **Installer Whisper et/ou Ollama** si nécessaire ([voir docs de chaque projet])
    
@@ -51,11 +51,17 @@ pip install -r exigence.txt
    python transcriptsynthese.py
 
 2. **Suivre les instructions en console**
+   
    Choix du mode : “Transcrire + Synthétiser” ou “Synthétiser une transcription existante”
+   
    Saisie du fichier audio/vidéo, texte, ou URL YouTube
+   
    Choix du niveau de précision Whisper (Tiny à Large)
+   
    Choix du moteur IA (OpenAI, Gemini, Ollama)
+   
    Configuration fine (température, longueur de synthèse, modèle Ollama…)
 
-3. **Résultats**
+4. **Résultats**
+   
    Les fichiers .txt (transcription et synthèse) sont générés à côté de votre fichier source
