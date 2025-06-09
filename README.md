@@ -1,31 +1,102 @@
-# Transcripteur Audio/Vidéo avec Synthèse GPT
+TranscripteurSynthèse
+Description
 
-Ce projet fournit une interface graphique simplifiant la transcription d'un fichier audio ou vidéo à l'aide du modèle *Whisper* et la génération d'un résumé via l'API GPT d'OpenAI.
+TranscripteurSynthèse est un script Python tout-en-un permettant de :
 
-## Dépendances
+    Transcrire automatiquement des fichiers audio/vidéo ou des contenus YouTube en texte (grâce à Whisper),
 
-Les bibliothèques suivantes doivent être installées :
+    Générer des synthèses IA de ces transcriptions : résumé court, synthèse structurée, analyse détaillée ou argumentée,
 
-- `whisper`
-- `openai`
-- `torch`
-- `tkinter` (inclus avec Python sur la plupart des systèmes)
+    Choisir entre plusieurs fournisseurs d’IA : OpenAI (GPT), Google Gemini, ou IA locale via Ollama (ex : Mistral).
 
-## Installation
+Ce projet vise à offrir un outil simple, personnalisable et local-friendly pour tout besoin de transcription et de synthèse automatique.
+Fonctionnalités principales
 
-Installez les dépendances à l'aide de `pip` :
+    📥 Téléchargement YouTube (audio extrait automatiquement)
 
-```bash
-pip install -r requirements.txt
-```
+    🎤 Transcription multilingue (plusieurs niveaux de précision avec Whisper)
 
-## Utilisation
+    📝 Synthèse IA (résumé, synthèse standard, analyse détaillée ou critique)
 
-Exécutez directement le script pour lancer l'interface graphique :
+    🤖 Choix du moteur d’IA : OpenAI (GPT), Google Gemini, ou IA locale (Ollama/Mistral)
 
-```bash
-python transcriptsynthese.py
-```
+    🔒 Gestion sécurisée des clés API (via variable d’environnement ou prompt)
 
-Une fenêtre permet de sélectionner un fichier audio ou vidéo, puis de générer la transcription et la synthèse à l'aide d'une clé API OpenAI.
+    🛠️ Logs détaillés (console ou fichier)
 
+    ⚡ Utilisation CPU ou GPU (auto-détection pour Whisper)
+
+    🗃️ Résultats sauvegardés automatiquement (transcription.txt + synthese.txt)
+
+Installation
+
+    Cloner le dépôt
+
+git clone <lien-du-repo>
+cd <nom-du-repo>
+
+Créer et activer un environnement virtuel (optionnel mais recommandé)
+
+python3 -m venv mon_env
+source mon_env/bin/activate
+
+Installer les dépendances
+
+    pip install -r exigence.txt
+
+    Installer Whisper et/ou Ollama si nécessaire ([voir docs de chaque projet])
+
+Utilisation
+
+    Lancer le script
+
+    python transcriptsynthese.py
+
+    Suivre les instructions en console
+
+        Choix du mode : “Transcrire + Synthétiser” ou “Synthétiser une transcription existante”
+
+        Saisie du fichier audio/vidéo, texte, ou URL YouTube
+
+        Choix du niveau de précision Whisper (Tiny à Large)
+
+        Choix du moteur IA (OpenAI, Gemini, Ollama)
+
+        Configuration fine (température, longueur de synthèse, modèle Ollama…)
+
+    Résultats
+
+        Les fichiers .txt (transcription et synthèse) sont générés à côté de votre fichier source
+
+Configuration et sécurité
+
+    Clés API :
+    À renseigner via un prompt sécurisé au lancement, ou via des variables d’environnement pour automatiser (OPENAI_API_KEY, GEMINI_API_KEY…)
+
+    Fichier .env :
+    Vous pouvez stocker vos clés API dans un fichier .env non publié sur GitHub.
+
+    Logs :
+    Les logs sont affichés en console et peuvent être sauvegardés en fichier (décommenter dans le script si besoin).
+
+Dépendances principales
+
+    whisper
+
+    openai
+
+    google-generativeai
+
+    yt-dlp
+
+    ollama (optionnel, pour IA locale)
+
+    python-dotenv (optionnel)
+
+    torch
+
+    psutil
+
+    requests
+
+    (et autres dans exigence.txt)
