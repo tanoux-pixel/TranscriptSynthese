@@ -1,4 +1,13 @@
-whisper
-openai
 torch
-tkinter
+whisper
+yt-dlp
+requests
+python-docx
+fastapi
+uvicorn
+# Dépendances pour l’IA locale
+ollama  # ← ne s'installe pas par pip, mais c'est noté pour rappel
+
+# Optionnel, seulement si tu veux utiliser d'autres IA cloud :
+openai
+google-generativeai
