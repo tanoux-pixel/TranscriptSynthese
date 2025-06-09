@@ -1,23 +1,54 @@
+# ==============================================================
+# TRANSCRIPTEUR & SYNTHÈSE IA AVANCÉE - SANTÉ / QUALITÉ / DOC
+# --------------------------------------------------------------
+# Ce script tout-en-un permet :
+# 1. Transcription automatique (audio, vidéo, YouTube → texte) avec Whisper.
+# 2. Menu avancé pour paramétrer la synthèse IA (public, contexte, style, extraction d’éléments…).
+# 3. Génération de prompt IA avancé.
+# 4. Synthèse IA (Ollama par défaut, facilement modifiable pour OpenAI/Gemini).
+# 5. Export Word (.docx) avec structuration.
+# 6. Double usage : terminal (menu interactif) ou API (FastAPI).
+# --------------------------------------------------------------
+# DEPENDANCES : torch, whisper, yt-dlp, requests, docx (python-docx),
+# fastapi, uvicorn, (optionnel : openai, google-generativeai)
+# ==============================================================
+
 import os
 import sys
+import time
+import json
 import torch
 import requests
-import json
-import time
 from pathlib import Path
-from docx import Document
-from docx.shared import Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+# Pour transcription audio/vidéo/YouTube
 try:
-    import argparse
+    import whisper
+    from yt_dlp import YoutubeDL
+except ImportError:
+    print("[!] Installer whisper et yt-dlp : pip install whisper yt-dlp")
+    sys.exit(1)
+
+# Pour l'export Word
+try:
+    from docx import Document
+    from docx.shared import Pt
+except ImportError:
+    print("[!] Installer python-docx : pip install python-docx")
+    sys.exit(1)
+
+# Pour le mode API (optionnel)
+try:
     from fastapi import FastAPI, File, UploadFile
     from fastapi.responses import FileResponse
     import uvicorn
 except ImportError:
-    pass  # Ces modules ne sont nécessaires que pour l'utilisation API
+    pass  # Pas bloquant pour l'usage menu classique
 
-# ----- CONFIG -----
+# ===============================
+# PARAMÈTRES GÉNÉRIQUES (menus)
+# ===============================
+
 PUBLICS_CIBLES = [
     "Grand public (adolescents/adultes)",
     "Familles",
@@ -51,11 +82,98 @@ NIVEAUX_LANGUE = [
     "Autre (saisie manuelle)"
 ]
 
-# ----- PROMPT BUILDER -----
+TONS = [
+    "Autoritaire", "Engageant", "Neutre", "Pédagogique", "Autre"
+]
+
+# ===============================
+# OUTILS DE MENU INTERACTIF
+# ===============================
+
+def choix_menu(label, options):
+    """
+    Affiche un menu à choix unique, retourne le texte choisi.
+    """
+    print(f"\n{label}")
+    for i, opt in enumerate(options, 1):
+        print(f"{i}. {opt}")
+    choix = input("Votre choix (numéro ou texte) : ").strip()
+    if choix.isdigit() and 1 <= int(choix) <= len(options):
+        val = options[int(choix) - 1]
+        if "autre" in val.lower():
+            return input("Veuillez préciser : ")
+        else:
+            return val
+    else:
+        return choix
+
+def choix_multi(label, options):
+    """
+    Menu à choix multiples, retourne une liste booléenne (True pour sélectionné).
+    """
+    print(f"\n{label} (séparez les numéros par une virgule pour multi-sélection)")
+    for i, opt in enumerate(options, 1):
+        print(f"{i}. {opt}")
+    choix = input("Votre choix : ").strip().replace(" ", "")
+    idxs = [int(x)-1 for x in choix.split(",") if x.isdigit() and 1 <= int(x) <= len(options)]
+    return [i in idxs for i in range(len(options))]
+
+# ===============================
+# TRANSCRIPTION AUDIO/VIDEO
+# ===============================
+
+def is_youtube_url(url):
+    """Détecte si l'entrée est une URL YouTube."""
+    import re
+    youtube_regex = r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/'
+    return re.match(youtube_regex, url) is not None
+
+def download_youtube_audio(url):
+    """
+    Télécharge l'audio d'une vidéo YouTube au format FLAC (qualité pour transcription).
+    Retourne le nom de fichier local.
+    """
+    print(f"\n[YouTube] Téléchargement de l'audio depuis : {url}")
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': 'yt_audio_%(id)s.%(ext)s',
+        'noplaylist': True,
+        'quiet': True,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'flac',
+            'preferredquality': '0',
+        }]
+    }
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        audio_file = f"yt_audio_{info['id']}.flac"
+        print(f"[YouTube] Audio extrait : {audio_file}")
+        return audio_file
+
+def transcrire_fichier_audio(fichier, modele="base"):
+    """
+    Utilise Whisper pour transcrire un fichier audio/vidéo.
+    """
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"[Whisper] Chargement du modèle {modele} sur {device}...")
+    model = whisper.load_model(modele, device=device)
+    print("[Whisper] Transcription en cours...")
+    result = model.transcribe(fichier)
+    texte = result["text"]
+    nom_sortie = Path(fichier).stem + "_transcription.txt"
+    with open(nom_sortie, "w", encoding="utf-8") as f:
+        f.write(texte)
+    print(f"[Whisper] Transcription sauvegardée : {nom_sortie}")
+    return texte, nom_sortie
+
+# ===============================
+# PROMPT BUILDER AVANCÉ
+# ===============================
 
 def build_prompt(texte, params):
     """
-    Génère le prompt pour l'IA selon les paramètres choisis.
+    Génère le prompt complet pour la synthèse IA selon les paramètres utilisateur.
     """
     public = params["public"]
     contexte = params["contexte"]
@@ -63,7 +181,7 @@ def build_prompt(texte, params):
     ton = params["ton"]
     objectifs = params["objectifs"]
     synthese_types = params["synthese_types"]  # liste de bools
-    structuration = params["structuration"]  # liste de bools
+    structuration = params["structuration"]    # liste de bools
 
     prompt = (
         f"Tu es un assistant IA expert en synthèse et vulgarisation en santé.\n"
@@ -118,39 +236,18 @@ def build_prompt(texte, params):
     prompt += "\n".join(instructions)
     prompt += (
         "\n\nVoici le texte à synthétiser :\n"
-        f"{texte[:12000]}"  # limite pour éviter l'overflow prompt
+        f"{texte[:12000]}"  # coupe pour éviter overflow du prompt
     )
     return prompt
 
-# ----- MENU UTILISATEUR -----
-
-def choix_menu(label, options):
-    print(f"\n{label}")
-    for i, opt in enumerate(options, 1):
-        print(f"{i}. {opt}")
-    choix = input("Votre choix (numéro, ou saisie libre pour 'Autre') : ").strip()
-    if choix.isdigit() and 1 <= int(choix) <= len(options):
-        val = options[int(choix) - 1]
-        if val.lower().startswith("autre"):
-            return input("Veuillez préciser : ")
-        else:
-            return val
-    else:
-        return choix  # saisie libre
-
-def choix_multi(label, options):
-    print(f"\n{label} (séparez les numéros par une virgule pour multi-sélection)")
-    for i, opt in enumerate(options, 1):
-        print(f"{i}. {opt}")
-    choix = input("Votre choix : ").strip().replace(" ", "")
-    idxs = [int(x) - 1 for x in choix.split(",") if x.isdigit() and 1 <= int(x) <= len(options)]
-    if not idxs:
-        return [False] * len(options)
-    return [i in idxs for i in range(len(options))]
-
-# ----- IA : APPEL OLLAMA (EXEMPLE, À ADAPTER POUR OPENAI/GEMINI SI BESOIN) -----
+# ===============================
+# IA : APPEL OLLAMA PAR DÉFAUT
+# ===============================
 
 def generate_synthese_ollama(prompt, modele="mistral", temperature=0.5, max_tokens=2048):
+    """
+    Envoie le prompt à Ollama (API locale) pour générer la synthèse.
+    """
     data = {
         "model": modele,
         "prompt": prompt,
@@ -166,9 +263,14 @@ def generate_synthese_ollama(prompt, modele="mistral", temperature=0.5, max_toke
     synthese = r.json().get("response", "").strip()
     return synthese
 
-# ----- EXPORT WORD -----
+# ===============================
+# EXPORT WORD (.docx)
+# ===============================
 
 def export_word(texte_synthese, nom_sortie="synthese_finale.docx"):
+    """
+    Génère un fichier Word à partir de la synthèse texte.
+    """
     doc = Document()
     doc.add_heading("Synthèse IA de la transcription", 0)
     for bloc in texte_synthese.split("\n\n"):
@@ -177,68 +279,89 @@ def export_word(texte_synthese, nom_sortie="synthese_finale.docx"):
     doc.save(nom_sortie)
     print(f"✅ Fichier Word généré : {nom_sortie}")
 
-# ----- MAIN (CLI) -----
+# ===============================
+# WORKFLOW PRINCIPAL (TERMINAL)
+# ===============================
 
 def main():
-    print("=== Synthèse IA de transcription (Santé/Qualité) ===")
+    print("\n=== TRANSCRIPTEUR & SYNTHÈSE IA AVANCÉE ===")
 
-    # 1. Lecture du texte à synthétiser
-    chemin = input("\nChemin du fichier à synthétiser (txt) : ").strip()
-    if not os.path.exists(chemin):
-        print("Fichier introuvable.")
+    # --- 1. Sélection de la source (audio/vidéo/YouTube ou .txt déjà prêt) ---
+    print("\n[1] Choisissez le fichier à traiter :")
+    chemin = input("Chemin du fichier audio/vidéo/texte OU URL YouTube : ").strip()
+    if is_youtube_url(chemin):
+        fichier_audio = download_youtube_audio(chemin)
+        source_type = "audio"
+    elif Path(chemin).suffix.lower() in [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".mp4", ".mkv", ".avi", ".mov"]:
+        fichier_audio = chemin
+        source_type = "audio"
+    elif Path(chemin).suffix.lower() in [".txt"]:
+        fichier_texte = chemin
+        source_type = "texte"
+    else:
+        print("Format non reconnu. Abandon.")
         sys.exit(1)
-    with open(chemin, "r", encoding="utf-8") as f:
-        texte = f.read()
 
-    # 2. Paramétrage par menus
+    # --- 2. Transcription si besoin ---
+    if source_type == "audio":
+        print("\n[2] Choix du modèle Whisper (1: tiny, 2: base, 3: small, 4: medium, 5: large)")
+        choix = input("Votre choix (numéro, défaut=2/base) : ").strip() or "2"
+        modeles_whisper = ["tiny", "base", "small", "medium", "large"]
+        modele = modeles_whisper[int(choix)-1]
+        texte, fichier_texte = transcrire_fichier_audio(fichier_audio, modele=modele)
+    else:
+        with open(fichier_texte, "r", encoding="utf-8") as f:
+            texte = f.read()
+
+    # --- 3. Menu de paramétrage synthèse IA avancée ---
+    print("\n[3] Paramétrage de la synthèse IA :")
     params = {}
-
-    # Public cible
-    params["public"] = choix_menu("Choisissez le public cible :", PUBLICS_CIBLES)
-    # Contexte d'usage
-    params["contexte"] = choix_menu("Choisissez le contexte d'usage :", CONTEXTES)
-    # Niveau de langue
-    params["niveau_langue"] = choix_menu("Choisissez le niveau de langue souhaité :", NIVEAUX_LANGUE)
-    # Ton
-    params["ton"] = choix_menu("Choisissez le ton à adopter :", ["Autoritaire", "Engageant", "Neutre", "Pédagogique", "Autre"])
-    # Objectifs
+    params["public"] = choix_menu("Public cible :", PUBLICS_CIBLES)
+    params["contexte"] = choix_menu("Contexte d'usage :", CONTEXTES)
+    params["niveau_langue"] = choix_menu("Niveau de langue :", NIVEAUX_LANGUE)
+    params["ton"] = choix_menu("Ton à adopter :", TONS)
     params["objectifs"] = "Informer de façon neutre, faire un rappel de la législation si possible, lister des actions concrètes si possible (issues des cas cités dans la transcription)."
-    # Types de synthèse
     params["synthese_types"] = choix_multi(
-        "Types de synthèse à générer :\n1. Résumé court\n2. Résumé structuré\n3. Synthèse analytique\n4. Analyse critique\n5. Combinaison de styles\n6. Plusieurs synthèses différentes",
+        "Types de synthèse (1: Résumé court, 2: Résumé structuré, 3: Synthèse analytique, 4: Analyse critique, 5: Combinaison de styles, 6: Plusieurs synthèses différentes)",
         ["Résumé court", "Résumé structuré", "Synthèse analytique", "Analyse critique", "Combinaison de styles", "Plusieurs synthèses différentes"])
-    # Structuration
     params["structuration"] = choix_multi(
-        "Structuration souhaitée :\n1. Selon les chapitres/parties du texte original\n2. Par thématique\n3. Mettre en avant les citations/faits précis",
-        ["Selon les chapitres/parties", "Par thématique", "Citations/faits précis"])
+        "Structuration (1: Chapitres/parties du texte, 2: Par thématique, 3: Citations/faits précis)",
+        ["Chapitre/parties", "Thématique", "Citations/faits"])
 
-    # Modèle IA et réglages
-    modele = input("\nNom du modèle IA à utiliser (ex : mistral, phi3, llama3) : ").strip() or "mistral"
+    # --- 4. Paramètres IA ---
+    modele_ia = input("\nNom du modèle IA (ex: mistral, phi3, llama3, défaut=mistral) : ").strip() or "mistral"
     try:
         temperature = float(input("Température (0=factuel, 1=créatif) [0.5] : ") or "0.5")
     except:
         temperature = 0.5
     try:
-        max_tokens = int(input("Nombre max de tokens pour la synthèse [2048] : ") or "2048")
+        max_tokens = int(input("Nombre max de tokens [2048] : ") or "2048")
     except:
         max_tokens = 2048
 
-    # 3. Génération du prompt
+    # --- 5. Prompt builder ---
     prompt = build_prompt(texte, params)
-    print("\n=== PROMPT GÉNÉRÉ POUR L'IA ===\n")
+    print("\n--- Aperçu du prompt généré ---\n")
     print(prompt[:1000], "...\n")
 
-    # 4. Synthèse IA
-    print("\nEnvoi du prompt à l'IA locale (Ollama)...")
-    synthese = generate_synthese_ollama(prompt, modele=modele, temperature=temperature, max_tokens=max_tokens)
-    print("Synthèse générée :\n", synthese[:1000], "...\n")
+    # --- 6. Génération de la synthèse IA ---
+    print("[IA] Envoi du prompt à l'IA locale (Ollama)...")
+    synthese = generate_synthese_ollama(prompt, modele=modele_ia, temperature=temperature, max_tokens=max_tokens)
+    print("[IA] Synthèse générée (début) :\n", synthese[:1000], "...\n")
 
-    # 5. Export Word
+    # --- 7. Export Word ---
     export_word(synthese)
 
-# ----- MODE API -----
+    print("\n=== FIN ===\n")
+
+# ===============================
+# API FASTAPI (MODE OPTIONNEL)
+# ===============================
 
 def run_api():
+    """
+    Lance l'API FastAPI permettant de piloter la synthèse à distance.
+    """
     app = FastAPI()
 
     @app.post("/synthese/")
@@ -273,7 +396,9 @@ def run_api():
     print("Lancement de l'API (FastAPI, /synthese/)...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-# ----- CLI OR API -----
+# ===============================
+# POINT D'ENTRÉE
+# ===============================
 
 if __name__ == "__main__":
     if "--api" in sys.argv:
