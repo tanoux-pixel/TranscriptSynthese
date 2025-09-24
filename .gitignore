@@ -1,0 +1,25 @@
+# Environnements virtuels
+mistral_env/
+venv/
+env/
+
+# Modèles IA (trop gros)
+models/
+*.tar
+*.bin
+*.safetensors
+
+# Fichiers temporaires
+*.flac
+yt_audio_*
+*_transcription.txt
+synthese_*.docx
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers système
+.DS_Store
+Thumbs.db

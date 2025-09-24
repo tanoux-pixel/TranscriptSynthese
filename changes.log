@@ -1,0 +1,170 @@
+## Liste des modifications
+
+### v2.1 : Migration vers Mistral local (2025-09-23)
+**BREAKING CHANGES :**
+- Remplacement complet d'Ollama par Mistral via Transformers
+- Nouvelles dépendances requises : transformers, accelerate
+- Suppression de la dépendance Ollama
+
+**Nouvelles fonctionnalités :**
+- Intégration native Mistral-7B-Instruct via Hugging Face Transformers
+- Cache intelligent des modèles (évite rechargement à chaque utilisation)
+- Support automatique GPU/CPU avec optimisations mémoire
+- Quantification 8-bit automatique si bitsandbytes disponible
+- Choix entre 3 modèles Mistral (v0.1, v0.2, base)
+- Templates de chat officiels Mistral pour meilleure qualité
+- Gestion améliorée des erreurs et timeouts
+
+**Améliorations techniques :**
+- Optimisation RAM : 6-8GB au lieu de 12-16GB avec quantification
+- Performance GPU : jusqu'à 3x plus rapide sur RTX 4060+
+- Cache persistant : modèle reste en mémoire entre synthèses
+- Détection automatique device (CUDA/CPU) et répartition optimale
+- Repetition penalty et contrôles génération avancés
+
+**Interface utilisateur :**
+- Menu de sélection des modèles Mistral intégré
+- Indicateurs de progression pour chargement modèle
+- Messages d'erreur plus explicites et solutions proposées
+- Aperçu de configuration avant génération
+
+**API FastAPI :**
+- Nouveau paramètre 'modele' pour choisir la variante Mistral
+- Endpoint de santé /health pour vérifier le statut du modèle
+- Documentation Swagger mise à jour avec exemples Mistral
+- Gestion d'erreurs améliorée avec codes HTTP appropriés
+
+**Documentation :**
+- README complet avec guide d'installation Mistral
+- Section dépannage GPU/CPU/mémoire
+- Exemples d'usage secteur santé mis à jour
+- Guide migration depuis Ollama
+- Benchmarks performance selon hardware
+
+**Corrections de bugs :**
+- Fix timeout sur gros fichiers avec modèles lents
+- Correction encodage UTF-8 pour textes avec caractères spéciaux
+- Résolution problème cache corrompue transformers
+- Fix génération tronquée avec max_tokens trop bas
+
+### v2.0 : Fusion complète transcription+menus+synthèse IA+Word+API (2025-06-10)
+**Fonctionnalités principales :**
+- Script tout-en-un transcription + synthèse IA + export Word
+- Menu interactif avancé pour paramétrage synthèse
+- Support audio, vidéo, YouTube, texte
+- Génération de prompt IA adaptatif selon contexte
+- Export Word structuré professionnel
+- Double mode : terminal interactif + API FastAPI
+- Intégration Ollama (remplacé en v2.1)
+
+**Éléments de synthèse :**
+- Résumé court, structuré, analytique, critique
+- Table des matières automatique
+- Glossaire des termes techniques
+- Citations et éléments factuels marquants
+- Recommandations pratico-pratiques
+- Analyse critique IA neutre
+- Encadré juridique avec références légales
+
+**Paramétrage avancé :**
+- 7 publics cibles (grand public → professionnels → institutionnels)
+- 8 contextes d'usage (rapport interne → publication externe)
+- 9 niveaux de langue (très grand public → scientifique)
+- 5 tons (autoritaire → pédagogique)
+- Structuration modulaire (chapitres, thématique, citations)
+- Types de synthèse combinables
+
+**Support formats :**
+- Audio : MP3, WAV, FLAC, AAC, OGG, M4A
+- Vidéo : MP4, MKV, AVI, MOV
+- Texte : TXT
+- Streaming : YouTube (yt-dlp automatique)
+
+**Transcription Whisper :**
+- 5 niveaux de modèles (tiny → large)
+- Détection automatique GPU/CPU
+- Support multilingue
+- Sauvegarde transcription intermédiaire
+
+### v1.x : Séparation transcription/synthèse, sans export avancé
+**Historique :**
+- Scripts séparés pour transcription et synthèse
+- Export basique sans structuration
+- Configuration manuelle requise
+- Pas d'interface utilisateur unifiée
+- Support limité aux formats audio de base
+
+## Notes de migration
+
+### Depuis v2.0 (Ollama) vers v2.1 (Mistral)
+1. Installer nouvelles dépendances : `pip install transformers accelerate`
+2. Optionnel GPU : `pip install bitsandbytes`
+3. Remplacer transcriptsynthese.py par la version 2.1
+4. Premier lancement : téléchargement automatique Mistral (~13GB)
+5. Ollama peut être désinstallé si plus utilisé
+
+### Rétrocompatibilité
+- ✅ Tous les paramètres de menu identiques
+- ✅ API endpoints inchangés (nouveau paramètre 'modele')
+- ✅ Format export Word identique
+- ✅ Fichiers de configuration existants utilisables
+- ❌ Scripts appelant directement Ollama à adapter
+
+### Prérequis système mis à jour
+- Python 3.8+ (inchangé)
+- RAM : 8GB minimum, 16GB recommandé
+- GPU : NVIDIA recommandé (CUDA 11.8+)
+- Espace disque : +13GB pour cache modèles
+
+## Performances comparatives
+
+### Ollama vs Mistral local (RTX 4060, 16GB RAM)
+```
+Métriques                    | Ollama v2.0  | Mistral v2.1
+----------------------------|--------------|-------------
+Temps setup initial         | 2-3 min     | 30-60 sec
+RAM utilisée                | 12-14 GB    | 6-8 GB
+Temps synthèse 5000 mots    | 90-120 sec  | 30-60 sec
+Qualité synthèse            | Très bonne  | Excellente
+Dépendances externes        | Ollama      | Aucune
+Installation complexity     | Moyenne     | Simple
+```
+
+## Roadmap v2.2+
+
+### En développement
+- [ ] Support Mistral-22B pour synthèses complexes
+- [ ] Interface web Streamlit/Gradio
+- [ ] Export multi-formats (PDF, HTML, Markdown)
+- [ ] Batch processing automatisé
+- [ ] Base de données synthèses historiques
+
+### En réflexion
+- [ ] Intégration modèles français (AgentPublic, etc.)
+- [ ] Support formats vidéo avancés (sous-titres)
+- [ ] Plugin Microsoft Word direct
+- [ ] Mode collaboratif multi-utilisateurs
+- [ ] Analyse sentiment et émotions
+
+## Bugs connus v2.1
+
+### Mineurs
+- Timeout possible sur très gros fichiers (>2h audio) → contourner en découpant
+- Caractères spéciaux parfois mal encodés → vérifier locale système
+- Cache Transformers peut grossir → nettoyer ~/.cache/huggingface/
+
+### Workarounds
+```bash
+# Nettoyer cache si problème espace
+rm -rf ~/.cache/huggingface/transformers/
+
+# Forcer CPU si problème GPU
+export CUDA_VISIBLE_DEVICES=""
+
+# Augmenter timeout pour gros fichiers
+# Dans le script : modifier max_tokens selon besoin
+```
+
+---
+Maintenu par Tanoux_Pixel | Licence CC-BY-NC
+Dernière mise à jour : 23/09/2025

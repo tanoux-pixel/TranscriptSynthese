@@ -1,0 +1,73 @@
+# Dépendances TranscripteurSynthèse IA v2.1 (Mistral Local)
+
+# === CORE DEPENDENCIES (obligatoires) ===
+torch>=2.0.0
+whisper>=20231117
+yt-dlp>=2023.12.30
+requests>=2.31.0
+python-docx>=1.1.0
+
+# === MISTRAL LOCAL (remplace Ollama) ===
+transformers>=4.36.0
+accelerate>=0.25.0
+
+# === API WEB (optionnel, pour mode --api) ===
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# === OPTIMISATIONS PERFORMANCE (optionnel mais recommandé) ===
+# Quantification 8-bit pour économiser RAM (6GB au lieu de 12GB)
+bitsandbytes>=0.41.0
+
+# Support audio étendu pour Whisper
+torchaudio>=2.0.0
+
+# === GPU SUPPORT (choisir selon votre config) ===
+# NVIDIA CUDA 11.8+ (recommandé si GPU disponible)
+# torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# AMD ROCm (non testé mais théoriquement compatible)
+# torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.6
+
+# CPU uniquement (fallback si pas de GPU)
+# torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# === AUTRES IA CLOUD (optionnel, non utilisé par défaut) ===
+# Garde la compatibilité avec les anciennes versions si besoin
+openai>=1.0.0          # Pour OpenAI GPT (si modification du script)
+google-generativeai    # Pour Google Gemini (si modification du script)
+
+# === UTILITAIRES DÉVELOPPEMENT (optionnel) ===
+# pytest>=7.0.0         # Tests unitaires
+# black>=23.0.0          # Formatage code
+# mypy>=1.0.0            # Type checking
+
+# === NOTES D'INSTALLATION ===
+# 1. Créer environnement virtuel :
+#    python -m venv mistral_env
+#    source mistral_env/bin/activate  # Linux/Mac
+#    mistral_env\Scripts\activate     # Windows
+#
+# 2. Installer dépendances de base :
+#    pip install -r exigence.txt
+#
+# 3. GPU NVIDIA (recommandé) :
+#    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#
+# 4. Premier lancement (télécharge Mistral ~13GB) :
+#    python transcriptsynthese.py
+#
+# 5. Test installation :
+#    python -c "import torch, transformers, whisper; print('✅ OK')"
+
+# === CONFIGURATION MINIMALE ===
+# Python : 3.8+
+# RAM : 8GB minimum, 16GB recommandé
+# Espace disque : 15GB+ (modèles + cache)
+# GPU : NVIDIA RTX 3060+ recommandé (6GB+ VRAM)
+
+# === TROUBLESHOOTING ===
+# Erreur "CUDA out of memory" → installer bitsandbytes
+# Erreur import transformers → pip install --upgrade transformers
+# Modèle trop lent → utiliser GPU ou réduire max_tokens
+# Cache corrompu → rm -rf ~/.cache/huggingface/transformers/
