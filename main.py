@@ -1,4 +1,3 @@
-cat > main.py << 'EOF'
 import sys
 
 if __name__ == "__main__":
@@ -11,4 +10,3 @@ if __name__ == "__main__":
     else:
         from core import main
         main()
-EOF 

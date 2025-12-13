@@ -1,4 +1,3 @@
-cat > config.py << 'EOF'
 PUBLICS_CIBLES = [
     "Grand public (adolescents/adultes)",
     "Familles",
@@ -39,4 +38,3 @@ MODELES_MISTRAL = [
     "mistralai/Mistral-7B-Instruct-v0.2",
     "mistralai/Mistral-7B-v0.1"
 ]
-EOF 

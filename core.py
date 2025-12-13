@@ -104,6 +104,12 @@ def transcrire_fichier_audio(fichier, modele="base"):
     with open(nom_sortie, "w", encoding="utf-8") as f:
         f.write(texte)
     print(f"[Whisper] Transcription sauvegardée : {nom_sortie}")
+    
+    # Libérer la VRAM
+    del model
+    torch.cuda.empty_cache()
+    print("[Whisper] Mémoire GPU libérée")
+    
     return texte, nom_sortie
 
 # ===============================
@@ -180,45 +186,65 @@ def build_prompt(texte, params):
 # IA : MISTRAL LOCAL
 # ===============================
 
-def load_mistral_model(model_name="mistralai/Mistral-7B-Instruct-v0.1"):
+def load_mistral_model(model_name=None):
     """
-    Charge le modèle Mistral et le tokenizer. Utilise un cache pour éviter de recharger.
+    Charge un modèle IA avec fallback automatique.
+    Priorité aux modèles légers pour configs limitées, Mistral si GPU puissant.
     """
     global _cached_model, _cached_tokenizer, _cached_model_name
     
-    if _cached_model is not None and _cached_model_name == model_name:
+    fallback_models = [
+        ("Qwen/Qwen2.5-3B-Instruct", False),                # ~6 Go GPU - Priorité pour petites configs
+        ("google/gemma-2-2b-it", False),                    # ~4 Go GPU
+        ("mistralai/Mistral-7B-Instruct-v0.2", False),      # ~14 Go GPU - Pour grosses configs
+        ("mistralai/Mistral-7B-Instruct-v0.1", True),       # CPU offload - Dernier recours
+    ]
+    
+    if model_name:
+        fallback_models.insert(0, (model_name, False))
+    
+    if _cached_model is not None:
+        print(f"[IA] Modèle déjà chargé : {_cached_model_name}")
         return _cached_tokenizer, _cached_model
     
-    print(f"[Mistral] Chargement du modèle {model_name}...")
-    
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        
-        model_kwargs = {
-            "torch_dtype": torch.float16,
-            "device_map": "auto",
-        }
-        
+    for model_id, use_cpu_offload in fallback_models:
         try:
-            model_kwargs["load_in_8bit"] = True
-        except:
-            pass
-        
-        model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
-        
-        _cached_model = model
-        _cached_tokenizer = tokenizer
-        _cached_model_name = model_name
-        
-        print(f"[Mistral] Modèle chargé avec succès !")
-        return tokenizer, model
-        
-    except Exception as e:
-        print(f"[!] Erreur lors du chargement de Mistral : {e}")
-        print("[!] Vérifiez que transformers et accelerate sont installés")
-        sys.exit(1)
+            mode = "CPU offload" if use_cpu_offload else "GPU"
+            print(f"[IA] Tentative : {model_id} ({mode})")
+            
+            tokenizer = AutoTokenizer.from_pretrained(model_id)
+            
+            if use_cpu_offload:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    offload_folder="offload"
+                )
+            else:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float16,
+                    device_map="auto"
+                )
+            
+            _cached_model = model
+            _cached_tokenizer = tokenizer
+            _cached_model_name = model_id
+            
+            print(f"[IA] ✅ Chargé : {model_id} ({mode})")
+            return tokenizer, model
+            
+        except Exception as e:
+            print(f"[IA] ⚠️ Échec {model_id} : {str(e)[:80]}...")
+            # Libérer la mémoire en cas d'échec
+            torch.cuda.empty_cache()
+            continue
+    
+    print("[!] Aucun modèle n'a pu être chargé.")
+    sys.exit(1)
 
-def generate_synthese_mistral(prompt, model_name="mistralai/Mistral-7B-Instruct-v0.1", temperature=0.5, max_tokens=2048):
+def generate_synthese_mistral(prompt, model_name=None, temperature=0.5, max_tokens=2048):
     """
     Génère une synthèse en utilisant Mistral local via Transformers.
     """

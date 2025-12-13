@@ -1,4 +1,3 @@
-cat > gui.py << 'EOF'
 import tkinter as tk
 from tkinter import filedialog, ttk, scrolledtext, messagebox
 import threading
@@ -135,4 +134,3 @@ def run_gui():
     zone_texte.config(state="disabled")
     
     fenetre.mainloop()
-EOF 
